@@ -1,0 +1,11 @@
+{
+  "name": "morphogen",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A runtime UI planner bench that assembles industrial and enterprise interfaces from reusable widgets.",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/"
+  }
+}
