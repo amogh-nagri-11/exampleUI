@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 
 const read = (f) => readFileSync(new URL(`./src/${f}`, import.meta.url), 'utf8');
-const js = ['packs.js', 'planner.js', 'page-plan.js', 'widgets.js', 'runtime.js', 'inspector.js', 'page-render.js', 'app.js'].map(read).join('\n');
+const js = ['packs.js', 'planner.js', 'page-plan.js', 'evolution.js', 'widgets.js', 'runtime.js', 'inspector.js', 'evolution-view.js', 'page-render.js', 'app.js'].map(read).join('\n');
 if (js.includes('</script')) throw new Error('A source file contains a closing script tag.');
 
 const head = `<title>Morphogen</title>

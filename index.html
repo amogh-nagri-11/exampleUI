@@ -711,6 +711,45 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
 .gen .g-stacked > .g-freeitem { background: var(--g-panel); border: 1px solid var(--g-line); box-shadow: 0 8px 26px rgb(0 0 0 / 0.28); clip-path: none; }
 .gen .g-stacked > .g-freeitem.g-tabs { background: var(--g-panel2); }
 
+/* ---------- Evolution instrument ---------- */
+.mod-evolution .pane-head { flex-wrap: wrap; }
+.evo-ctl { display: flex; gap: 4px; }
+.evo-host { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.evo-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 5px 8px; }
+/* Scroll the instrument instead of squeezing its parts; an SVG with auto height collapses to nothing. */
+.evo-host > * { flex: none; }
+.evo-chart { width: 100%; height: auto; max-height: 190px; min-height: 96px; display: block; }
+.evo-grid { stroke: var(--line); stroke-width: 1; }
+.evo-tick { font: 9.5px var(--font-data); fill: var(--mut); }
+.evo-best { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.evo-area { fill: var(--accent); opacity: 0.1; stroke: none; }
+.evo-mean { fill: none; stroke: var(--line-2); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.evo-dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.evo-end { font: 500 10px var(--font-data); fill: var(--fg); }
+.evo-end.is-mean { fill: var(--mut); font-weight: 400; }
+.evo-hit { fill: transparent; }
+.evo-hit:hover { fill: var(--accent); fill-opacity: 0.08; }
+.evo-pop { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 5px; }
+.evo-ind { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 3px; height: 74px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; text-align: left; }
+.evo-ind .minipage { flex: 1; }
+.evo-ind:hover { border-color: var(--line-2); }
+.evo-ind.is-on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.evo-fit { position: absolute; right: 4px; bottom: 2px; font-size: 11px; font-weight: 600; }
+.evo-born { font: 9.5px var(--font-data); color: var(--mut); }
+.evo-ind.is-best .evo-born { color: var(--accent); font-weight: 600; }
+.evo-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 14px; }
+.evo-parts { display: grid; gap: 3px; margin: 3px 0 8px; }
+.evo-part { display: grid; grid-template-columns: minmax(0, 1fr) 70px 44px; gap: 6px; align-items: center; font-size: 11.5px; }
+.evo-part .num { text-align: right; color: var(--mut); font-size: 11px; }
+.evo-part .cand-bar i { background: var(--accent); }
+.evo-ops { border-collapse: collapse; width: 100%; font-size: 11.5px; }
+.evo-ops th { text-align: left; font-weight: 500; color: var(--mut); border-bottom: 1px solid var(--line); padding: 2px 6px 2px 0; }
+.evo-ops td { padding: 2px 6px 2px 0; border-bottom: 1px solid var(--line); }
+.evo-log { list-style: none; margin: 3px 0 0; padding: 0; display: grid; gap: 5px; font-size: 11.5px; }
+.evo-log li { display: flex; flex-direction: column; border-left: 2px solid var(--accent); padding-left: 7px; }
+.evo-log span { color: var(--mut); }
+.evo-note { font-size: 11px; }
+
 </style>
 </head>
 <body>
@@ -721,7 +760,8 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
     <button type="button" class="btn" id="instr-toggle" aria-pressed="false" hidden>Instruments</button>
     <div class="dock-extra">
       <button type="button" class="btn" id="newgoal" title="Shortcut: G">New goal</button>
-      <button type="button" class="btn" id="evolve" aria-pressed="false">Evolve</button>
+      <button type="button" class="btn" id="evo-dock" aria-pressed="false" title="Shortcut: E">Evolve</button>
+      <button type="button" class="btn" id="evolve" aria-pressed="false">Auto-regenerate</button>
       <button type="button" class="btn" id="atlas-open">Design atlas</button>
       <button type="button" class="btn" id="xray" aria-pressed="false" title="Shortcut: X">X-ray</button>
       <button type="button" class="btn" id="walk" aria-pressed="false">Simulate operator</button>
@@ -814,6 +854,17 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
     <section class="pane mod" id="mod-meta" aria-label="Runtime metadata">
       <div class="pane-head"><h2 class="label">Runtime metadata</h2></div>
       <div id="meta" class="meta-host"></div>
+    </section>
+
+    <section class="pane mod mod-evolution" id="mod-evolution" aria-label="Evolution">
+      <div class="pane-head"><h2 class="label">Evolution</h2>
+        <div class="evo-ctl">
+          <button type="button" class="btn btn-small btn-primary" id="evo-toggle" aria-pressed="false">Evolve</button>
+          <button type="button" class="btn btn-small" id="evo-step">Step</button>
+          <button type="button" class="btn btn-small" id="evo-reset">Reset</button>
+        </div>
+      </div>
+      <div id="evo" class="evo-host"></div>
     </section>
 
     <section class="pane mod" id="mod-trace" aria-label="Planner trace">
@@ -1106,6 +1157,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
+  M.stream = stream;
   function softmax(rng, scored, temp) {
     const max = Math.max(...scored.map((s) => s.score));
     const weights = scored.map((s) => Math.exp((s.score - max) / temp));
@@ -1393,7 +1445,9 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
   /* ---------- Main entry ---------- */
   M.plan = function (input) {
     const t0 = now();
-    const seed = String(input.seed), locks = input.locks || {};
+    const seed = String(input.seed), locks = input.locks || {}, fixed = input.fixed || {}, genes = input.genes || null;
+    /* Each decision reads its own stream. A genome can reseed one stream and leave every other draw unchanged. */
+    const rs = (label) => stream(genes ? (genes[label] ?? genes[label.replace(/\d+$/, '')] ?? seed) : seed, label);
     const pack = M.PACKS.find((p) => p.id === input.goalId) || M.PACKS[0];
     const ctx = Object.assign(M.defaultContext(), input.ctx);
     const device = M.DEVICES[ctx.device];
@@ -1401,11 +1455,12 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
     const stages = [];
     const stage = (name, fn) => { const s = now(), lines = []; const out = fn(lines); stages.push({ name, lines, ms: +(now() - s).toFixed(3) }); return out; };
     const choose = (dim, scored, label) => {
-      if (locks[dim] && M.DIMENSIONS[dim].options[locks[dim]]) return { id: locks[dim], locked: true, candidates: scored };
-      return softmax(stream(seed, label || dim), scored, temp);
+      if (locks[dim] && M.DIMENSIONS[dim].options[locks[dim]]) return { id: locks[dim], locked: true, user: true, candidates: scored };
+      if (fixed[dim] && M.DIMENSIONS[dim].options[fixed[dim]]) return { id: fixed[dim], locked: true, inherited: true, candidates: scored };
+      return softmax(rs(label || dim), scored, temp);
     };
     const describe = (dim, pick) => pick.locked
-      ? `${M.DIMENSIONS[dim].label}: ${M.DIMENSIONS[dim].options[pick.id]} (locked by you).`
+      ? `${M.DIMENSIONS[dim].label}: ${M.DIMENSIONS[dim].options[pick.id]} (${pick.user ? 'locked by you' : 'inherited from parent'}).`
       : `${M.DIMENSIONS[dim].label}: ${M.DIMENSIONS[dim].options[pick.id]}, p=${pick.candidates.find((c) => c.id === pick.id).p}. Next best ${(pick.candidates.find((c) => c.id !== pick.id) || {}).id || 'none'}.`;
     const constraints = [];
     const rule = (id, label, status, detail) => constraints.push({ id, label, status, detail });
@@ -1423,7 +1478,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
       L.push(describe('interaction', interactionPick));
       let id = interactionPick.id, repaired = null;
       if (ctx.expertise < 0.3 && id === 'command') {
-        if (interactionPick.locked) rule('novice', 'Novices are not given command-only control', 'warn', 'Command mode is locked in with a novice operator. Kept as you asked.');
+        if (interactionPick.user) rule('novice', 'Novices are not given command-only control', 'warn', 'Command mode is locked in with a novice operator. Kept as you asked.');
         else { id = 'guided'; repaired = 'Replaced command mode with a guided procedure for a novice operator.'; L.push('Repair: ' + repaired); rule('novice', 'Novices are not given command-only control', 'repaired', repaired); }
       } else rule('novice', 'Novices are not given command-only control', 'pass', 'Interaction model suits this expertise level.');
       return id;
@@ -1433,8 +1488,8 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
     const topoPick = choose('topology', scoreTopology(ctx, pack.risk));
     const wf = stage('Workflow', (L) => {
       L.push(describe('topology', topoPick));
-      const g = buildWorkflow(pack, topoPick.id, ctx, stream(seed, 'wfshape'), L);
-      const rng = stream(seed, 'actors');
+      const g = buildWorkflow(pack, topoPick.id, ctx, rs('wfshape'), L);
+      const rng = rs('actors');
       const pAgent = clamp(ctx.autonomy * (interaction === 'supervisory' ? 1.15 : 0.85), 0, 0.95);
       let gated = 0;
       g.nodes.forEach((n) => {
@@ -1456,7 +1511,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
       if (partPick.id === 'single') groups = [nodes];
       else if (partPick.id === 'perStep') groups = nodes.map((n) => [n]);
       else {
-        const rng = stream(seed, 'clusters');
+        const rng = rs('clusters');
         const k = Math.min(nodes.length, rng() < 0.5 ? 2 : 3);
         groups = []; const size = nodes.length / k; let acc = [];
         nodes.forEach((n, i) => { acc.push(n); if (acc.length >= size - rng() * 0.6 && groups.length < k - 1 && i < nodes.length - 1) { groups.push(acc); acc = []; } });
@@ -1490,7 +1545,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
     const screens = stage('Widget selection', (L) => {
       const out = [];
       screenPlan.forEach((nodes, si) => {
-        const rng = stream(seed, 'select' + si);
+        const rng = rs('select' + si);
         const items = [];
         const covers = new Set();
         const used = {};
@@ -1579,12 +1634,12 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
       const primary = choose('layout', scoreLayout(ctx, screens[0].items.length, screens[0].covers.has('triage'), interaction));
       L.push(describe('layout', primary));
       return screens.map((s, si) => {
-        const rng = stream(seed, 'layout' + si);
+        const rng = rs('layout' + si);
         let strat = primary.id;
         const opts = scoreLayout(ctx, s.items.length, s.covers.has('triage'), interaction);
-        if (!primary.locked && si > 0 && rng() < 0.3) strat = softmax(rng, opts, temp).id;
-        if (!opts.some((o) => o.id === strat) && !primary.locked) strat = opts[0].id;
-        if (primary.locked && ctx.device === 'handheld' && !opts.some((o) => o.id === strat)) strat = 'feed';
+        if (!primary.user && si > 0 && rng() < 0.3) strat = softmax(rng, opts, temp).id;
+        if (!opts.some((o) => o.id === strat) && !primary.user) strat = opts[0].id;
+        if (primary.user && ctx.device === 'handheld' && !opts.some((o) => o.id === strat)) strat = 'feed';
         let items = s.items.slice();
         if (items.length > device.budget) {
           const keep = device.budget - 1;
@@ -1602,7 +1657,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
 
     const compPick = choose('composition', Object.keys(M.DIMENSIONS.composition.options).map((id) => ({ id, score: 1 + (id === 'bench' || id === 'theatre' ? (ctx.device === 'wall' ? 0.3 : 0) : 0) })));
     const page = stage('Page', (L) => {
-      const out = M.planPage(compPick.id, stream(seed, 'page'));
+      const out = M.planPage(compPick.id, rs('page'));
       L.push(describe('composition', compPick));
       L.push(`Controls appear as a ${out.dock.form} at ${out.dock.pos}. Page changes with a ${out.motion} transition.`);
       L.push(describe('skin', skinPick));
@@ -1617,7 +1672,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
     }
 
     /* Shell: chrome placement is part of the plan too. */
-    const rngShell = stream(seed, 'shell');
+    const rngShell = rs('shell');
     shell.nav = navId;
     shell.header = ctx.device === 'handheld' || rngShell() < 0.35 ? 'compact' : 'full';
     shell.surface = interaction;
@@ -1637,7 +1692,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
     const plan = {
       seed, goalId: pack.id, goal: input.goalText || pack.goal, ctx, locks: { ...locks },
       strategy: { interaction, nav: navId, topology: wf.shape, partition: partPick.id, layout: screenNodes.find((s) => !s.hub).strategy, skin: skinPick.id, composition: compPick.id },
-      identity: M.planIdentity(skinPick.id, stream(seed, 'identity')), page,
+      identity: M.planIdentity(skinPick.id, rs('identity')), page,
       pageTree: M.pageTree(page),
       workflow: { nodes: wf.nodes, edges: wf.edges },
       shell, tree, screens: screenNodes.map((s) => s.id), constraints, stages
@@ -1825,7 +1880,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
   };
 
   /* ---------- Page composition ---------- */
-  M.MODULES = { masthead: 'Lineage', genome: 'Plan genome', controls: 'Experiment controls', tree: 'Widget tree', graph: 'Workflow graph', layout: 'Layout strategy', meta: 'Runtime metadata', trace: 'Planner trace' };
+  M.MODULES = { masthead: 'Lineage', genome: 'Plan genome', controls: 'Experiment controls', tree: 'Widget tree', graph: 'Workflow graph', layout: 'Layout strategy', meta: 'Runtime metadata', trace: 'Planner trace', evolution: 'Evolution' };
   function shuffled(list, rng) { const a = list.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
   const region = (id, mode, modules, extra) => Object.assign({ id, mode, modules }, extra);
   const CORNERS = ['tl', 'tr', 'bl', 'br'];
@@ -1918,6 +1973,213 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
     }
     plan.stages.push({ name: 'Novelty gate', ms: 0, lines: [rejected ? `Rejected ${rejected} candidate${rejected > 1 ? 's' : ''} too close to the previous page.` : 'First candidate was already different from the previous page.'] });
     return plan;
+  };
+})(typeof window !== 'undefined' ? (window.Morphogen = window.Morphogen || {}) : (globalThis.Morphogen = globalThis.Morphogen || {}));
+
+/* Evolution: variation, selection and inheritance over whole-page designs.
+   A genome holds the strategy choices plus the seeds of each decision stream, so a child
+   reproduces its parent exactly except where it was mutated. Fitness comes from simulated
+   operators. The model is a set of stated heuristics, not something validated with users. */
+(function (M) {
+  M.GENE_DIMS = ['interaction', 'topology', 'partition', 'layout', 'skin', 'composition'];
+  M.GENE_STREAMS = { wfshape: 'Workflow detail', actors: 'Agent assignment', clusters: 'Screen grouping', nav: 'Navigation draw', select: 'Widget choice', layout: 'Layout detail', shell: 'Chrome placement', identity: 'Colour and type', page: 'Instrument placement' };
+  const STREAM_KEYS = Object.keys(M.GENE_STREAMS);
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const seedFrom = (rng) => Math.floor(rng() * 0xffffff).toString(16).padStart(6, '0');
+  const pick = (rng, list) => list[Math.floor(rng() * list.length)];
+
+  M.genomeOf = (plan) => ({ seed: plan.seed, dims: Object.fromEntries(M.GENE_DIMS.map((d) => [d, plan.strategy[d]])), streams: {} });
+  M.planFromGenome = (input, g) => M.plan(Object.assign({}, input, { seed: g.seed, fixed: g.dims, genes: g.streams }));
+  M.genomeKey = (g) => JSON.stringify([g.seed, M.GENE_DIMS.map((d) => g.dims[d]), STREAM_KEYS.map((k) => g.streams[k] || '')]);
+  const clone = (g) => ({ seed: g.seed, dims: { ...g.dims }, streams: { ...g.streams } });
+
+  function allowed(dim, value, device) {
+    if (dim !== 'layout') return true;
+    if (device === 'handheld') return ['feed', 'pods', 'river'].includes(value);
+    if (device === 'tablet') return !['wall', 'orbit', 'radial', 'cascade'].includes(value);
+    return true;
+  }
+  /* Changes `count` genes. Dimensions you hold fixed are never mutated. */
+  M.mutate = function (g, rng, count, locks, device) {
+    const out = clone(g), changes = [];
+    const dims = M.GENE_DIMS.filter((d) => !(locks && locks[d]));
+    for (let k = 0; k < count; k++) {
+      if (dims.length && rng() < 0.55) {
+        const d = pick(rng, dims);
+        const opts = Object.keys(M.DIMENSIONS[d].options).filter((o) => o !== out.dims[d] && allowed(d, o, device));
+        if (!opts.length) continue;
+        const to = pick(rng, opts);
+        changes.push(`${M.DIMENSIONS[d].label}: ${M.DIMENSIONS[d].options[out.dims[d]] || out.dims[d]} → ${M.DIMENSIONS[d].options[to]}`);
+        out.dims[d] = to;
+      } else {
+        const key = pick(rng, STREAM_KEYS);
+        out.streams[key] = seedFrom(rng);
+        changes.push(`New ${M.GENE_STREAMS[key].toLowerCase()}`);
+      }
+    }
+    return { genome: out, changes };
+  };
+  /* Uniform crossover: each gene comes from one parent or the other. */
+  M.crossover = function (a, b, rng) {
+    const g = { seed: rng() < 0.5 ? a.seed : b.seed, dims: {}, streams: {} };
+    M.GENE_DIMS.forEach((d) => { g.dims[d] = rng() < 0.5 ? a.dims[d] : b.dims[d]; });
+    STREAM_KEYS.forEach((k) => {
+      const src = rng() < 0.5 ? a : b;
+      /* An absent stream gene means "use the parent's seed", so make it explicit before mixing. */
+      const val = src.streams[k] || (src.seed !== g.seed ? src.seed : null);
+      if (val) g.streams[k] = val;
+    });
+    return g;
+  };
+
+  /* ---------- Simulated operators ---------- */
+  const NAV = { rail: (s) => 0.8, tabs: (s) => 0.8, stepper: (s) => 0.4, hub: (s) => 1.9 - 0.4 * s, palette: (s) => 2.4 - 1.5 * s, timeline: (s) => 1, dock: (s) => 1, anchors: (s) => 0.6, thread: (s) => 0.4 };
+  const ACT = { direct: (s) => 1.2, guided: (s) => 1, conversational: (s) => 2, command: (s) => 3 - 2.4 * s, supervisory: (s) => 0.8, mixed: (s) => 1.3 };
+  const ERR = { direct: 1, guided: 0.7, conversational: 1, command: 2.2, supervisory: 1.1, mixed: 1 };
+
+  function screensOf(plan) {
+    const vp = plan.tree.children.find((c) => c.type === 'viewport');
+    return vp.children.map((s) => {
+      const widgets = [];
+      const collect = (n, hidden) => {
+        if (n.type === 'widget') { widgets.push({ kind: n.widget, caps: n.caps, hidden }); return; }
+        const tabs = n.layout && n.layout.mode === 'tabs';
+        (n.children || []).forEach((c, i) => collect(c, hidden || (tabs && i > 0)));
+      };
+      s.children.forEach((c) => collect(c, false));
+      return { id: s.id, nodes: s.nodes, hub: s.hub, widgets, visible: widgets.filter((w) => !w.hidden).length };
+    });
+  }
+
+  /* One operator, one run. Returns time in seconds split by where it went. */
+  function runOnce(plan, screens, skill, device, rng) {
+    const nodes = plan.workflow.nodes, nav = plan.strategy.nav, act = plan.strategy.interaction;
+    const touch = device === 'handheld' || device === 'tablet';
+    const t = { nav: 0, search: 0, read: 0, act: 0, errors: 0, agent: 0 };
+    let errors = 0, cur = screens[0].hub ? 'overview' : null;
+    const guideOn = (sc) => sc.widgets.some((w) => w.caps.includes('guide'));
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+      const sc = screens.find((x) => x.nodes.includes(node.id));
+      if (cur !== sc.id) { if (cur !== null) t.nav += NAV[nav](skill); cur = sc.id; }
+      t.search += 0.7 * Math.log2(sc.visible + 1) * (1.35 - skill);
+      if (node.actor === 'agent' && !node.irreversible) {
+        t.agent += 0.9;
+        if (rng() < 0.04) { t.errors += 6; errors++; }
+        continue;
+      }
+      node.caps.forEach((cap) => {
+        const w = sc.widgets.find((x) => x.caps.includes(cap));
+        if (!w) { t.read += 8; return; }
+        const c = M.catalogByKind[w.kind];
+        t.read += 0.6 + c.dense * 1.1 * (1 - skill) + (1 - skill) * (1 - c.novice) * 1.5 + skill * (1 - c.dense) * 0.4;
+        if (w.hidden) t.read += 0.9;
+        if (touch) t.read += (1 - c.touch) * 1.2;
+      });
+      t.act += ACT[act](skill) * (node.irreversible ? 2 : 1);
+      let p = (0.03 + (1 - skill) * 0.09) * ERR[act];
+      p += Math.max(0, sc.visible / M.DEVICES[device].budget - 1) * 0.08;
+      if (node.irreversible && skill < 0.35 && !guideOn(sc)) p += 0.15;
+      if (rng() < p) {
+        errors++;
+        t.errors += 5 + 4 * (1 - skill);
+        if (node.irreversible && node.backTo) {
+          const back = nodes.findIndex((x) => x.id === node.backTo);
+          t.errors += Math.max(0, i - back) * 3;
+        }
+      }
+      if (errors >= 4) return { t, total: sum(t), errors, done: false };
+    }
+    const total = sum(t);
+    return { t, total, errors, done: total < 600 };
+  }
+  const sum = (t) => Object.values(t).reduce((a, b) => a + b, 0);
+
+  /* Fitness: mean over runs of 100 × 60 / (60 + seconds) for completed runs, 0 otherwise.
+     100 would be instant; 50 means a minute. Three operators at expertise −0.25, 0 and +0.25,
+     three runs each, all with the same random draws so that designs are compared fairly. */
+  M.simulate = function (plan, ctx, evalSeed) {
+    if (plan.constraints.some((c) => c.status === 'fail')) return { fitness: 0, failed: true, personas: [], parts: {} };
+    const screens = screensOf(plan);
+    const personas = [-0.25, 0, 0.25].map((o) => clamp(ctx.expertise + o, 0.02, 0.98));
+    const parts = { nav: 0, search: 0, read: 0, act: 0, errors: 0, agent: 0 };
+    let score = 0, runs = 0;
+    const out = personas.map((skill, pi) => {
+      let time = 0, errs = 0, done = 0;
+      for (let r = 0; r < 3; r++) {
+        const res = runOnce(plan, screens, skill, ctx.device, M.stream(evalSeed, `p${pi}r${r}`));
+        runs++; time += res.total; errs += res.errors; done += res.done ? 1 : 0;
+        score += res.done ? (100 * 60) / (60 + res.total) : 0;
+        Object.keys(parts).forEach((k) => { parts[k] += res.t[k]; });
+      }
+      return { skill: +skill.toFixed(2), time: +(time / 3).toFixed(1), errors: +(errs / 3).toFixed(1), done };
+    });
+    Object.keys(parts).forEach((k) => { parts[k] = +(parts[k] / runs).toFixed(1); });
+    return { fitness: +(score / runs).toFixed(1), personas: out, parts };
+  };
+
+  /* ---------- Population ---------- */
+  function individual(evo, genome, born, parents, changes) {
+    const plan = M.planFromGenome(evo.input, genome);
+    const sim = M.simulate(plan, evo.input.ctx, evo.evalSeed);
+    return { id: 'i' + (++evo.ids), genome, plan, fit: sim.fitness, sim, born, parents, changes };
+  }
+  M.newEvolution = function (plan, input, opts) {
+    const o = Object.assign({ size: 8, elites: 3, seed: 'evo' }, opts);
+    const evo = { input: Object.assign({}, input, { ctx: Object.assign(M.defaultContext(), input.ctx), locks: { ...(input.locks || {}) } }), size: o.size, elites: o.elites, evalSeed: o.seed + '|eval', rngSeed: o.seed, gen: 0, ids: 0, explore: 1, stale: 0, seen: new Set(), history: [], log: [], converged: false };
+    const base = individual(evo, M.genomeOf(plan), 0, [], ['Starting design']);
+    evo.seen.add(M.genomeKey(base.genome));
+    evo.pop = [base];
+    const rng = M.stream(evo.rngSeed, 'init');
+    for (let guard = 0; evo.pop.length < evo.size && guard < 60; guard++) {
+      const m = M.mutate(base.genome, rng, 1 + (rng() < 0.6 ? 1 : 0), evo.input.locks, evo.input.ctx.device);
+      const key = M.genomeKey(m.genome);
+      if (evo.seen.has(key) || !m.changes.length) continue;
+      evo.seen.add(key);
+      evo.pop.push(individual(evo, m.genome, 0, [base.id], m.changes));
+    }
+    evo.pop.sort((a, b) => b.fit - a.fit);
+    evo.bestFit = evo.pop[0].fit;
+    evo.history.push(stats(evo));
+    return evo;
+  };
+  function stats(evo) {
+    const fits = evo.pop.map((x) => x.fit);
+    return { gen: evo.gen, best: Math.max(...fits), mean: +(fits.reduce((a, b) => a + b, 0) / fits.length).toFixed(1), explore: +evo.explore.toFixed(2) };
+  }
+  /* One generation: keep the elites, breed the rest by mutation or crossover. */
+  M.evolveStep = function (evo) {
+    const rng = M.stream(evo.rngSeed, 'gen' + evo.gen);
+    evo.gen++;
+    const ranked = [...evo.pop].sort((a, b) => b.fit - a.fit);
+    const elites = ranked.slice(0, evo.elites);
+    const children = [];
+    for (let guard = 0; children.length < evo.size - elites.length && guard < 80; guard++) {
+      let genome, parents, changes;
+      if (elites.length > 1 && rng() < 0.3) {
+        const a = pick(rng, elites), b = pick(rng, elites.filter((x) => x !== a));
+        genome = M.crossover(a.genome, b.genome, rng); parents = [a.id, b.id]; changes = ['Crossover'];
+        if (rng() < evo.explore) { const m = M.mutate(genome, rng, 1, evo.input.locks, evo.input.ctx.device); genome = m.genome; changes = changes.concat(m.changes); }
+      } else {
+        const x = pick(rng, ranked), y = pick(rng, ranked), parent = x.fit >= y.fit ? x : y;
+        const n = 1 + (rng() < evo.explore ? 1 : 0) + (rng() < evo.explore * 0.5 ? 1 : 0);
+        const m = M.mutate(parent.genome, rng, n, evo.input.locks, evo.input.ctx.device);
+        genome = m.genome; parents = [parent.id]; changes = m.changes;
+      }
+      const key = M.genomeKey(genome);
+      if (evo.seen.has(key)) continue;
+      evo.seen.add(key);
+      children.push(individual(evo, genome, evo.gen, parents, changes));
+    }
+    evo.pop = [...elites, ...children].sort((a, b) => b.fit - a.fit);
+    const best = evo.pop[0];
+    if (best.fit > evo.bestFit + 0.05) {
+      evo.log.unshift({ gen: evo.gen, from: evo.bestFit, to: best.fit, changes: best.changes });
+      evo.bestFit = best.fit; evo.stale = 0; evo.explore = Math.min(1, evo.explore + 0.05);
+    } else { evo.stale++; evo.explore = Math.max(0.1, evo.explore * 0.85); }
+    evo.converged = evo.stale >= 10 && evo.explore <= 0.12;
+    evo.history.push(stats(evo));
+    return evo;
   };
 })(typeof window !== 'undefined' ? (window.Morphogen = window.Morphogen || {}) : (globalThis.Morphogen = globalThis.Morphogen || {}));
 
@@ -2937,6 +3199,67 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
   };
 })(window.Morphogen = window.Morphogen || {});
 
+/* The Evolution instrument: fitness by generation, the live population, what the
+   champion's time is spent on, and which mutations paid off. */
+(function (M) {
+  const h = M.h;
+  const PARTS = { search: 'Finding things', read: 'Reading widgets', act: 'Acting', nav: 'Navigating', errors: 'Recovering from errors', agent: 'Reviewing the agent' };
+
+  function chart(history) {
+    const W = 360, H = 136, L = 30, R = 44, T = 10, B = 20;
+    const vals = history.flatMap((x) => [x.best, x.mean]);
+    const lo = Math.max(0, Math.floor((Math.min(...vals) - 4) / 5) * 5), hi = Math.min(100, Math.ceil((Math.max(...vals) + 4) / 5) * 5);
+    const n = Math.max(1, history.length - 1);
+    const x = (i) => L + (i / n) * (W - L - R), y = (v) => T + (1 - (v - lo) / (hi - lo || 1)) * (H - T - B);
+    const line = (k) => history.map((p, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)} ${y(p[k]).toFixed(1)}`).join(' ');
+    const last = history[history.length - 1];
+    const ticks = [lo, (lo + hi) / 2, hi];
+    const svg = h('svg:svg', { viewBox: `0 0 ${W} ${H}`, class: 'evo-chart', role: 'img', 'aria-label': `Best fitness ${last.best}, population mean ${last.mean}, after ${last.gen} generations` },
+      ticks.map((v) => [h('svg:line', { x1: L, x2: W - R, y1: y(v), y2: y(v), class: 'evo-grid' }), h('svg:text', { x: L - 5, y: y(v) + 3, class: 'evo-tick', 'text-anchor': 'end' }, Math.round(v))]),
+      h('svg:text', { x: L, y: H - 5, class: 'evo-tick' }, 'G0'),
+      h('svg:text', { x: W - R, y: H - 5, class: 'evo-tick', 'text-anchor': 'end' }, 'G' + last.gen),
+      h('svg:path', { d: line('mean'), class: 'evo-mean' }),
+      h('svg:path', { d: `${line('best')} L${x(n)} ${H - B} L${x(0)} ${H - B} Z`, class: 'evo-area' }),
+      h('svg:path', { d: line('best'), class: 'evo-best' }),
+      h('svg:circle', { cx: x(n), cy: y(last.best), r: 3.5, class: 'evo-dot' }),
+      h('svg:text', { x: x(n) + 6, y: y(last.best) + 3, class: 'evo-end' }, `Best ${last.best}`),
+      h('svg:text', { x: x(n) + 6, y: Math.max(y(last.mean) + 3, y(last.best) + 15), class: 'evo-end is-mean' }, `Mean ${last.mean}`),
+      history.map((p, i) => h('svg:rect', { x: x(i) - (W - L - R) / n / 2, y: T, width: Math.max(4, (W - L - R) / n), height: H - T - B, class: 'evo-hit' }, h('svg:title', null, `Generation ${p.gen}: best ${p.best}, mean ${p.mean}, exploration ${Math.round(p.explore * 100)} %`))));
+    return svg;
+  }
+
+  M.renderEvolution = function (host, evo, ctl) {
+    if (!evo) {
+      host.replaceChildren(h('p', { class: 'note' }, 'Start evolving to breed variants of the current page. Simulated operators score each one, and the best designs pass their genes on.'));
+      return;
+    }
+    const best = evo.pop[0], last = evo.history[evo.history.length - 1];
+    const status = evo.converged ? 'Converged' : evo.explore > 0.5 ? 'Exploring' : 'Refining';
+    const stat = (l, v, title) => h('div', { class: 'mt', title }, h('span', { class: 'mt-l' }, l), h('b', { class: 'mt-v' }, v));
+    const start = evo.history[0].best;
+    host.replaceChildren(
+      h('div', { class: 'evo-stats' },
+        stat('Generation', evo.gen), stat('Best fitness', best.fit, 'Higher is better. 50 means operators take a minute on average.'), stat('Gain', `${best.fit - start >= 0 ? '+' : ''}${(best.fit - start).toFixed(1)}`, 'Best fitness now, compared with the starting population'),
+        stat('Exploration', Math.round(evo.explore * 100) + ' %', 'Chance of extra mutations. It shrinks while nothing improves, so the design settles.'),
+        stat('Designs tried', evo.seen.size), stat('Status', status)),
+      chart(evo.history),
+      h('div', { class: 'label' }, 'Population, best first'),
+      h('div', { class: 'evo-pop' }, evo.pop.map((ind, i) => h('button', { type: 'button', class: 'evo-ind' + (ind.id === ctl.shownId ? ' is-on' : '') + (i === 0 ? ' is-best' : ''), title: `${ind.changes.join('; ')}. Born in generation ${ind.born}.`, 'aria-label': `Show design with fitness ${ind.fit}`, onclick: () => ctl.onShow(ind) },
+        M.miniPage(ind.plan), h('span', { class: 'evo-fit num' }, ind.fit), h('span', { class: 'evo-born' }, i === 0 ? 'Best' : 'G' + ind.born)))),
+      h('div', { class: 'evo-cols' },
+        h('div', null, h('div', { class: 'label' }, "Where the champion's time goes"),
+          h('div', { class: 'evo-parts' }, (() => {
+            const total = Object.values(best.sim.parts).reduce((a, b) => a + b, 0) || 1;
+            return Object.entries(PARTS).map(([k, label]) => h('div', { class: 'evo-part', title: `${best.sim.parts[k]} s of ${total.toFixed(1)} s` }, h('span', null, label), h('span', { class: 'cand-bar' }, h('i', { style: { width: (best.sim.parts[k] / total) * 100 + '%' } })), h('span', { class: 'num' }, best.sim.parts[k] + ' s')));
+          })()),
+          h('table', { class: 'evo-ops' }, h('thead', null, h('tr', null, h('th', null, 'Operator skill'), h('th', null, 'Time'), h('th', null, 'Errors'), h('th', null, 'Finished'))),
+            h('tbody', null, best.sim.personas.map((p) => h('tr', null, h('td', { class: 'num' }, p.skill.toFixed(2)), h('td', { class: 'num' }, p.time + ' s'), h('td', { class: 'num' }, p.errors), h('td', { class: 'num' }, `${p.done} of 3`)))))),
+        h('div', null, h('div', { class: 'label' }, 'Improvements'),
+          evo.log.length ? h('ol', { class: 'evo-log' }, evo.log.slice(0, 8).map((e) => h('li', null, h('b', { class: 'num' }, `G${e.gen}  ${e.from} → ${e.to}`), h('span', null, e.changes.join('; '))))) : h('p', { class: 'note' }, 'No improvement yet.'))),
+      h('p', { class: 'note evo-note' }, `Fitness is 100 × 60 ÷ (60 + seconds) for finished runs, averaged over 9 runs by simulated operators at skill ${best.sim.personas.map((p) => p.skill.toFixed(2)).join(', ')}. The operator model is a heuristic, not validated with users. It does not score colour, type or where instruments sit, so those genes drift without selection.`));
+  };
+})(window.Morphogen = window.Morphogen || {});
+
 /* Rebuilds the real page from plan.page. Instruments are long-lived DOM modules that keep
    their listeners and values; each plan moves them into a newly built structure. */
 (function (M) {
@@ -3100,7 +3423,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
   const state = {
     goalId: 'refinery', goalText: null, goalNote: null, seed: 'a71c04', ctx: M.defaultContext(), locks: {},
     history: [], current: null, gen: 0, stores: {}, rt: null, xray: false,
-    evolve: null, walk: null, tab: 'trace', inspectTab: 'tree', ui: { collapsed: new Set(), selected: null, screen: null, onSelect: null }
+    evolve: null, walk: null, evo: null, evoTimer: null, evoShown: null, evoShownFit: -1, tab: 'trace', inspectTab: 'tree', ui: { collapsed: new Set(), selected: null, screen: null, onSelect: null }
   };
   const reduced = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const storeFor = (pack) => state.stores[pack.id] || (state.stores[pack.id] = M.newStore(pack));
@@ -3168,7 +3491,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
     }
   }
 
-  function regenerate() { replanDistinct('regenerate'); }
+  function regenerate() { stopEvo(); replanDistinct('regenerate'); }
   function newGoal() {
     const others = M.PACKS.filter((p) => p.id !== state.goalId);
     setGoal(others[Math.floor(Math.random() * others.length)].id);
@@ -3190,7 +3513,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
 
   /* ---------- Rendering ---------- */
   function renderAll() {
-    renderGenome(); renderLineage(); renderTree(); renderLayout(); renderGraph(); renderMeta(); renderTabs(); renderSpec();
+    renderGenome(); renderLineage(); renderTree(); renderLayout(); renderGraph(); renderMeta(); renderTabs(); renderSpec(); renderEvolution();
     $('stage').classList.toggle('xray', state.xray);
   }
   function renderTree() {
@@ -3252,6 +3575,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
     if (on) list.scrollLeft = on.offsetLeft - list.clientWidth + on.offsetWidth + 8;
   }
   function restore(g) {
+    stopEvo();
     state.goalId = g.plan.goalId; state.goalText = g.plan.goal === packOf(g.plan.goalId).goal ? null : g.plan.goal;
     state.seed = g.plan.seed; state.ctx = { ...g.plan.ctx }; state.locks = { ...g.plan.locks };
     show(g);
@@ -3298,7 +3622,11 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
 
     $('regen').addEventListener('click', regenerate);
     $('newgoal').addEventListener('click', newGoal);
-    $('evolve').addEventListener('click', toggleEvolve);
+    $('evolve').addEventListener('click', () => { stopEvo(); toggleEvolve(); });
+    $('evo-toggle').addEventListener('click', toggleEvo);
+    $('evo-dock').addEventListener('click', toggleEvo);
+    $('evo-step').addEventListener('click', () => { stopEvo(); evoStep(); syncEvoButtons(); });
+    $('evo-reset').addEventListener('click', () => { stopEvo(); state.evo = null; state.evoShown = null; renderEvolution(); syncEvoButtons(); });
     $('atlas-open').addEventListener('click', openAtlas);
     $('xray').addEventListener('click', () => { state.xray = !state.xray; $('xray').setAttribute('aria-pressed', state.xray); $('stage').classList.toggle('xray', state.xray); });
     $('dock-more').addEventListener('click', () => { const open = $('dock').classList.toggle('is-open'); $('dock-more').setAttribute('aria-expanded', open); });
@@ -3324,6 +3652,7 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
       if (ev.key === 'r' || ev.key === 'R') regenerate();
       if (ev.key === 'g' || ev.key === 'G') newGoal();
       if (ev.key === 'x' || ev.key === 'X') $('xray').click();
+      if (ev.key === 'e' || ev.key === 'E') toggleEvo();
     });
 
     /* Hover in either direction links a tree row with the widget it created. */
@@ -3351,8 +3680,48 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
     if (state.evolve) { clearInterval(state.evolve); state.evolve = null; }
     else { regenerate(); state.evolve = setInterval(() => { if (!document.hidden) regenerate(); }, 6000); }
     $('evolve').setAttribute('aria-pressed', !!state.evolve);
-    $('evolve').textContent = state.evolve ? 'Stop evolving' : 'Evolve';
+    $('evolve').textContent = state.evolve ? 'Stop auto-regenerate' : 'Auto-regenerate';
   }
+
+  /* ---------- Evolution: breeds variants of the current page and shows each new champion ---------- */
+  const evoKey = () => JSON.stringify([state.goalId, state.goalText, state.ctx.device, ...['expertise', 'autonomy', 'urgency'].map((k) => Math.round(state.ctx[k] * 10)), state.locks]);
+  function ensureEvo() {
+    if (state.evo && state.evo.key === evoKey() && !state.evo.converged) return;
+    state.evo = M.newEvolution(state.current.plan, input(), { seed: M.newSeed() });
+    state.evo.key = evoKey();
+    const base = state.evo.pop.find((x) => x.changes[0] === 'Starting design');
+    state.evoShown = base.id; state.evoShownFit = base.fit;
+  }
+  function renderEvolution() {
+    M.renderEvolution($('evo'), state.evo, { shownId: state.evoShown, onShow: (ind) => showIndividual(ind, null) });
+  }
+  function showIndividual(ind, reason) {
+    state.evoShown = ind.id; state.evoShownFit = ind.fit; state.seed = ind.plan.seed;
+    adopt(ind.plan, 'evolution', reason);
+  }
+  /* The page only changes when a better design appears, so it settles as evolution converges. */
+  function evoStep() {
+    ensureEvo();
+    const evo = state.evo;
+    M.evolveStep(evo);
+    const best = evo.pop[0];
+    if (best.fit > state.evoShownFit + 0.5) showIndividual(best, `Generation ${evo.gen}: fitness ${state.evoShownFit} → ${best.fit}`);
+    else renderEvolution();
+    if (evo.converged) { stopEvo(); toast(`Converged after ${evo.gen} generations at fitness ${evo.bestFit}.`); }
+  }
+  function syncEvoButtons() {
+    const on = !!state.evoTimer;
+    ['evo-toggle', 'evo-dock'].forEach((id) => { $(id).setAttribute('aria-pressed', on); $(id).textContent = on ? 'Pause evolution' : state.evo && !state.evo.converged ? 'Resume evolving' : 'Evolve'; });
+  }
+  function stopEvo() { if (state.evoTimer) { clearInterval(state.evoTimer); state.evoTimer = null; } syncEvoButtons(); }
+  function toggleEvo() {
+    if (state.evoTimer) { stopEvo(); return; }
+    stopEvolveShuffle();
+    ensureEvo(); renderEvolution(); M.revealModule('evolution');
+    state.evoTimer = setInterval(() => { if (!document.hidden) evoStep(); }, 1200);
+    syncEvoButtons();
+  }
+  function stopEvolveShuffle() { if (state.evolve) toggleEvolve(); }
   function stopWalk() { if (state.walk) { clearInterval(state.walk); state.walk = null; } $('walk').setAttribute('aria-pressed', false); $('walk').textContent = 'Simulate operator'; }
   function toggleWalk() {
     if (state.walk) { stopWalk(); return; }

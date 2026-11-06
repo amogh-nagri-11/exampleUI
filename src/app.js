@@ -6,7 +6,7 @@
   const state = {
     goalId: 'refinery', goalText: null, goalNote: null, seed: 'a71c04', ctx: M.defaultContext(), locks: {},
     history: [], current: null, gen: 0, stores: {}, rt: null, xray: false,
-    evolve: null, walk: null, tab: 'trace', inspectTab: 'tree', ui: { collapsed: new Set(), selected: null, screen: null, onSelect: null }
+    evolve: null, walk: null, evo: null, evoTimer: null, evoShown: null, evoShownFit: -1, tab: 'trace', inspectTab: 'tree', ui: { collapsed: new Set(), selected: null, screen: null, onSelect: null }
   };
   const reduced = () => window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
   const storeFor = (pack) => state.stores[pack.id] || (state.stores[pack.id] = M.newStore(pack));
@@ -74,7 +74,7 @@
     }
   }
 
-  function regenerate() { replanDistinct('regenerate'); }
+  function regenerate() { stopEvo(); replanDistinct('regenerate'); }
   function newGoal() {
     const others = M.PACKS.filter((p) => p.id !== state.goalId);
     setGoal(others[Math.floor(Math.random() * others.length)].id);
@@ -96,7 +96,7 @@
 
   /* ---------- Rendering ---------- */
   function renderAll() {
-    renderGenome(); renderLineage(); renderTree(); renderLayout(); renderGraph(); renderMeta(); renderTabs(); renderSpec();
+    renderGenome(); renderLineage(); renderTree(); renderLayout(); renderGraph(); renderMeta(); renderTabs(); renderSpec(); renderEvolution();
     $('stage').classList.toggle('xray', state.xray);
   }
   function renderTree() {
@@ -158,6 +158,7 @@
     if (on) list.scrollLeft = on.offsetLeft - list.clientWidth + on.offsetWidth + 8;
   }
   function restore(g) {
+    stopEvo();
     state.goalId = g.plan.goalId; state.goalText = g.plan.goal === packOf(g.plan.goalId).goal ? null : g.plan.goal;
     state.seed = g.plan.seed; state.ctx = { ...g.plan.ctx }; state.locks = { ...g.plan.locks };
     show(g);
@@ -204,7 +205,11 @@
 
     $('regen').addEventListener('click', regenerate);
     $('newgoal').addEventListener('click', newGoal);
-    $('evolve').addEventListener('click', toggleEvolve);
+    $('evolve').addEventListener('click', () => { stopEvo(); toggleEvolve(); });
+    $('evo-toggle').addEventListener('click', toggleEvo);
+    $('evo-dock').addEventListener('click', toggleEvo);
+    $('evo-step').addEventListener('click', () => { stopEvo(); evoStep(); syncEvoButtons(); });
+    $('evo-reset').addEventListener('click', () => { stopEvo(); state.evo = null; state.evoShown = null; renderEvolution(); syncEvoButtons(); });
     $('atlas-open').addEventListener('click', openAtlas);
     $('xray').addEventListener('click', () => { state.xray = !state.xray; $('xray').setAttribute('aria-pressed', state.xray); $('stage').classList.toggle('xray', state.xray); });
     $('dock-more').addEventListener('click', () => { const open = $('dock').classList.toggle('is-open'); $('dock-more').setAttribute('aria-expanded', open); });
@@ -230,6 +235,7 @@
       if (ev.key === 'r' || ev.key === 'R') regenerate();
       if (ev.key === 'g' || ev.key === 'G') newGoal();
       if (ev.key === 'x' || ev.key === 'X') $('xray').click();
+      if (ev.key === 'e' || ev.key === 'E') toggleEvo();
     });
 
     /* Hover in either direction links a tree row with the widget it created. */
@@ -257,8 +263,48 @@
     if (state.evolve) { clearInterval(state.evolve); state.evolve = null; }
     else { regenerate(); state.evolve = setInterval(() => { if (!document.hidden) regenerate(); }, 6000); }
     $('evolve').setAttribute('aria-pressed', !!state.evolve);
-    $('evolve').textContent = state.evolve ? 'Stop evolving' : 'Evolve';
+    $('evolve').textContent = state.evolve ? 'Stop auto-regenerate' : 'Auto-regenerate';
   }
+
+  /* ---------- Evolution: breeds variants of the current page and shows each new champion ---------- */
+  const evoKey = () => JSON.stringify([state.goalId, state.goalText, state.ctx.device, ...['expertise', 'autonomy', 'urgency'].map((k) => Math.round(state.ctx[k] * 10)), state.locks]);
+  function ensureEvo() {
+    if (state.evo && state.evo.key === evoKey() && !state.evo.converged) return;
+    state.evo = M.newEvolution(state.current.plan, input(), { seed: M.newSeed() });
+    state.evo.key = evoKey();
+    const base = state.evo.pop.find((x) => x.changes[0] === 'Starting design');
+    state.evoShown = base.id; state.evoShownFit = base.fit;
+  }
+  function renderEvolution() {
+    M.renderEvolution($('evo'), state.evo, { shownId: state.evoShown, onShow: (ind) => showIndividual(ind, null) });
+  }
+  function showIndividual(ind, reason) {
+    state.evoShown = ind.id; state.evoShownFit = ind.fit; state.seed = ind.plan.seed;
+    adopt(ind.plan, 'evolution', reason);
+  }
+  /* The page only changes when a better design appears, so it settles as evolution converges. */
+  function evoStep() {
+    ensureEvo();
+    const evo = state.evo;
+    M.evolveStep(evo);
+    const best = evo.pop[0];
+    if (best.fit > state.evoShownFit + 0.5) showIndividual(best, `Generation ${evo.gen}: fitness ${state.evoShownFit} → ${best.fit}`);
+    else renderEvolution();
+    if (evo.converged) { stopEvo(); toast(`Converged after ${evo.gen} generations at fitness ${evo.bestFit}.`); }
+  }
+  function syncEvoButtons() {
+    const on = !!state.evoTimer;
+    ['evo-toggle', 'evo-dock'].forEach((id) => { $(id).setAttribute('aria-pressed', on); $(id).textContent = on ? 'Pause evolution' : state.evo && !state.evo.converged ? 'Resume evolving' : 'Evolve'; });
+  }
+  function stopEvo() { if (state.evoTimer) { clearInterval(state.evoTimer); state.evoTimer = null; } syncEvoButtons(); }
+  function toggleEvo() {
+    if (state.evoTimer) { stopEvo(); return; }
+    stopEvolveShuffle();
+    ensureEvo(); renderEvolution(); M.revealModule('evolution');
+    state.evoTimer = setInterval(() => { if (!document.hidden) evoStep(); }, 1200);
+    syncEvoButtons();
+  }
+  function stopEvolveShuffle() { if (state.evolve) toggleEvolve(); }
   function stopWalk() { if (state.walk) { clearInterval(state.walk); state.walk = null; } $('walk').setAttribute('aria-pressed', false); $('walk').textContent = 'Simulate operator'; }
   function toggleWalk() {
     if (state.walk) { stopWalk(); return; }

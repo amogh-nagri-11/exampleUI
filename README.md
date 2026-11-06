@@ -32,7 +32,8 @@ Each decision has its own random stream, so holding one variable leaves the othe
 | --- | --- |
 | Regenerate (`R`) | Same goal, new seed. Workflow progress carries over. The button moves, so `R` is the reliable way to press it again. |
 | New goal (`G`) | Different goal and new seed. |
-| Evolve | Regenerates every 6 seconds. |
+| Evolve (`E`) | Breeds variants of the current page and shows each new champion. See Evolution below. |
+| Auto-regenerate | Regenerates every 6 seconds, with no selection. |
 | Context sliders, device | Replan with the same seed, showing how context alone changes the UI. |
 | Runtime events | Change the context mid-run and replan live. |
 | Hold variables | Force a dimension, so you can vary one thing at a time. |
@@ -44,6 +45,20 @@ The widget tree starts at the page, so it shows where each instrument was placed
 Hovering a tree row highlights its widget, and hovering a widget highlights its row.
 Selecting a widget shows the alternatives and the probabilities the planner weighed.
 
+## Evolution
+
+Regenerate samples a fresh design every time. Evolve breeds designs instead, using all three parts of evolution:
+
+- **Inheritance:** a genome holds six strategy choices plus the seed of each decision stream, such as widget choice or colour and type. A child is an exact copy of its parent except where it was mutated.
+- **Variation:** each child gets one to three mutations, or is a crossover of two elite parents.
+- **Selection:** a population of eight keeps its best three each generation, and the shown page changes only when a better design appears.
+
+Fitness comes from simulated operators at three skill levels around the current expertise setting. A design's score is 100 × 60 ÷ (60 + seconds) for runs that finish, so 50 means a minute. The time model covers finding, reading, acting, navigating, error recovery and reviewing the agent. It uses the catalog's density, novice-fit and touch-fit ratings, and any design that fails a constraint scores 0.
+
+The chance of extra mutations shrinks while nothing improves, so the page settles. The run stops when it converges, usually within 20 to 30 generations. Changing the goal, device, expertise, autonomy, urgency or a held variable starts a new population.
+
+The operator model is a stated heuristic and has not been validated with users, so the UI evolves to suit the model, not people. It also doesn't score colour, type or where instruments sit, so those genes drift without selection pressure.
+
 ## Metrics
 
 Everything in Runtime metadata is computed from the plan or measured in the browser.
@@ -54,7 +69,7 @@ Novelty is half tree-shingle Jaccard distance and half the share of strategies t
 ## Development
 
 ```sh
-npm test        # planner, page, contrast and novelty invariants
+npm test        # planner, page, contrast, novelty and evolution invariants
 npm run build   # inlines src/ into index.html and dist/artifact.html
 ```
 
@@ -63,6 +78,8 @@ npm run build   # inlines src/ into index.html and dist/artifact.html
 | `src/packs.js` | Goals and simulated domain data |
 | `src/planner.js` | Catalog, scoring, constraints, layout solvers, metrics |
 | `src/page-plan.js` | Page compositions, generated identity and contrast, novelty gate |
+| `src/evolution.js` | Genomes, mutation, crossover, simulated operators, generation loop |
+| `src/evolution-view.js` | The Evolution instrument |
 | `src/page-render.js` | Rebuilds the page from a plan, and keeps the controls off content |
 | `src/widgets.js` | Widget renderers |
 | `src/runtime.js` | Shell, navigation models, interaction surfaces, live state |

@@ -5,7 +5,8 @@
     <button type="button" class="btn" id="instr-toggle" aria-pressed="false" hidden>Instruments</button>
     <div class="dock-extra">
       <button type="button" class="btn" id="newgoal" title="Shortcut: G">New goal</button>
-      <button type="button" class="btn" id="evolve" aria-pressed="false">Evolve</button>
+      <button type="button" class="btn" id="evo-dock" aria-pressed="false" title="Shortcut: E">Evolve</button>
+      <button type="button" class="btn" id="evolve" aria-pressed="false">Auto-regenerate</button>
       <button type="button" class="btn" id="atlas-open">Design atlas</button>
       <button type="button" class="btn" id="xray" aria-pressed="false" title="Shortcut: X">X-ray</button>
       <button type="button" class="btn" id="walk" aria-pressed="false">Simulate operator</button>
@@ -98,6 +99,17 @@
     <section class="pane mod" id="mod-meta" aria-label="Runtime metadata">
       <div class="pane-head"><h2 class="label">Runtime metadata</h2></div>
       <div id="meta" class="meta-host"></div>
+    </section>
+
+    <section class="pane mod mod-evolution" id="mod-evolution" aria-label="Evolution">
+      <div class="pane-head"><h2 class="label">Evolution</h2>
+        <div class="evo-ctl">
+          <button type="button" class="btn btn-small btn-primary" id="evo-toggle" aria-pressed="false">Evolve</button>
+          <button type="button" class="btn btn-small" id="evo-step">Step</button>
+          <button type="button" class="btn btn-small" id="evo-reset">Reset</button>
+        </div>
+      </div>
+      <div id="evo" class="evo-host"></div>
     </section>
 
     <section class="pane mod" id="mod-trace" aria-label="Planner trace">

@@ -699,3 +699,42 @@ html:not([data-motion="morph"])::view-transition-old(root) { animation: none; }
 /* Stacked sheets must be opaque whatever the panel treatment, or their text bleeds together. */
 .gen .g-stacked > .g-freeitem { background: var(--g-panel); border: 1px solid var(--g-line); box-shadow: 0 8px 26px rgb(0 0 0 / 0.28); clip-path: none; }
 .gen .g-stacked > .g-freeitem.g-tabs { background: var(--g-panel2); }
+
+/* ---------- Evolution instrument ---------- */
+.mod-evolution .pane-head { flex-wrap: wrap; }
+.evo-ctl { display: flex; gap: 4px; }
+.evo-host { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+.evo-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 5px 8px; }
+/* Scroll the instrument instead of squeezing its parts; an SVG with auto height collapses to nothing. */
+.evo-host > * { flex: none; }
+.evo-chart { width: 100%; height: auto; max-height: 190px; min-height: 96px; display: block; }
+.evo-grid { stroke: var(--line); stroke-width: 1; }
+.evo-tick { font: 9.5px var(--font-data); fill: var(--mut); }
+.evo-best { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; }
+.evo-area { fill: var(--accent); opacity: 0.1; stroke: none; }
+.evo-mean { fill: none; stroke: var(--line-2); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.evo-dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.evo-end { font: 500 10px var(--font-data); fill: var(--fg); }
+.evo-end.is-mean { fill: var(--mut); font-weight: 400; }
+.evo-hit { fill: transparent; }
+.evo-hit:hover { fill: var(--accent); fill-opacity: 0.08; }
+.evo-pop { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 5px; }
+.evo-ind { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 3px; height: 74px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 3px; text-align: left; }
+.evo-ind .minipage { flex: 1; }
+.evo-ind:hover { border-color: var(--line-2); }
+.evo-ind.is-on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.evo-fit { position: absolute; right: 4px; bottom: 2px; font-size: 11px; font-weight: 600; }
+.evo-born { font: 9.5px var(--font-data); color: var(--mut); }
+.evo-ind.is-best .evo-born { color: var(--accent); font-weight: 600; }
+.evo-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 14px; }
+.evo-parts { display: grid; gap: 3px; margin: 3px 0 8px; }
+.evo-part { display: grid; grid-template-columns: minmax(0, 1fr) 70px 44px; gap: 6px; align-items: center; font-size: 11.5px; }
+.evo-part .num { text-align: right; color: var(--mut); font-size: 11px; }
+.evo-part .cand-bar i { background: var(--accent); }
+.evo-ops { border-collapse: collapse; width: 100%; font-size: 11.5px; }
+.evo-ops th { text-align: left; font-weight: 500; color: var(--mut); border-bottom: 1px solid var(--line); padding: 2px 6px 2px 0; }
+.evo-ops td { padding: 2px 6px 2px 0; border-bottom: 1px solid var(--line); }
+.evo-log { list-style: none; margin: 3px 0 0; padding: 0; display: grid; gap: 5px; font-size: 11.5px; }
+.evo-log li { display: flex; flex-direction: column; border-left: 2px solid var(--accent); padding-left: 7px; }
+.evo-log span { color: var(--mut); }
+.evo-note { font-size: 11px; }

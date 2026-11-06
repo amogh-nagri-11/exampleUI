@@ -103,7 +103,7 @@
   };
 
   /* ---------- Page composition ---------- */
-  M.MODULES = { masthead: 'Lineage', genome: 'Plan genome', controls: 'Experiment controls', tree: 'Widget tree', graph: 'Workflow graph', layout: 'Layout strategy', meta: 'Runtime metadata', trace: 'Planner trace' };
+  M.MODULES = { masthead: 'Lineage', genome: 'Plan genome', controls: 'Experiment controls', tree: 'Widget tree', graph: 'Workflow graph', layout: 'Layout strategy', meta: 'Runtime metadata', trace: 'Planner trace', evolution: 'Evolution' };
   function shuffled(list, rng) { const a = list.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
   const region = (id, mode, modules, extra) => Object.assign({ id, mode, modules }, extra);
   const CORNERS = ['tl', 'tr', 'bl', 'br'];

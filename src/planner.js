@@ -69,6 +69,7 @@
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
   }
+  M.stream = stream;
   function softmax(rng, scored, temp) {
     const max = Math.max(...scored.map((s) => s.score));
     const weights = scored.map((s) => Math.exp((s.score - max) / temp));
@@ -356,7 +357,9 @@
   /* ---------- Main entry ---------- */
   M.plan = function (input) {
     const t0 = now();
-    const seed = String(input.seed), locks = input.locks || {};
+    const seed = String(input.seed), locks = input.locks || {}, fixed = input.fixed || {}, genes = input.genes || null;
+    /* Each decision reads its own stream. A genome can reseed one stream and leave every other draw unchanged. */
+    const rs = (label) => stream(genes ? (genes[label] ?? genes[label.replace(/\d+$/, '')] ?? seed) : seed, label);
     const pack = M.PACKS.find((p) => p.id === input.goalId) || M.PACKS[0];
     const ctx = Object.assign(M.defaultContext(), input.ctx);
     const device = M.DEVICES[ctx.device];
@@ -364,11 +367,12 @@
     const stages = [];
     const stage = (name, fn) => { const s = now(), lines = []; const out = fn(lines); stages.push({ name, lines, ms: +(now() - s).toFixed(3) }); return out; };
     const choose = (dim, scored, label) => {
-      if (locks[dim] && M.DIMENSIONS[dim].options[locks[dim]]) return { id: locks[dim], locked: true, candidates: scored };
-      return softmax(stream(seed, label || dim), scored, temp);
+      if (locks[dim] && M.DIMENSIONS[dim].options[locks[dim]]) return { id: locks[dim], locked: true, user: true, candidates: scored };
+      if (fixed[dim] && M.DIMENSIONS[dim].options[fixed[dim]]) return { id: fixed[dim], locked: true, inherited: true, candidates: scored };
+      return softmax(rs(label || dim), scored, temp);
     };
     const describe = (dim, pick) => pick.locked
-      ? `${M.DIMENSIONS[dim].label}: ${M.DIMENSIONS[dim].options[pick.id]} (locked by you).`
+      ? `${M.DIMENSIONS[dim].label}: ${M.DIMENSIONS[dim].options[pick.id]} (${pick.user ? 'locked by you' : 'inherited from parent'}).`
       : `${M.DIMENSIONS[dim].label}: ${M.DIMENSIONS[dim].options[pick.id]}, p=${pick.candidates.find((c) => c.id === pick.id).p}. Next best ${(pick.candidates.find((c) => c.id !== pick.id) || {}).id || 'none'}.`;
     const constraints = [];
     const rule = (id, label, status, detail) => constraints.push({ id, label, status, detail });
@@ -386,7 +390,7 @@
       L.push(describe('interaction', interactionPick));
       let id = interactionPick.id, repaired = null;
       if (ctx.expertise < 0.3 && id === 'command') {
-        if (interactionPick.locked) rule('novice', 'Novices are not given command-only control', 'warn', 'Command mode is locked in with a novice operator. Kept as you asked.');
+        if (interactionPick.user) rule('novice', 'Novices are not given command-only control', 'warn', 'Command mode is locked in with a novice operator. Kept as you asked.');
         else { id = 'guided'; repaired = 'Replaced command mode with a guided procedure for a novice operator.'; L.push('Repair: ' + repaired); rule('novice', 'Novices are not given command-only control', 'repaired', repaired); }
       } else rule('novice', 'Novices are not given command-only control', 'pass', 'Interaction model suits this expertise level.');
       return id;
@@ -396,8 +400,8 @@
     const topoPick = choose('topology', scoreTopology(ctx, pack.risk));
     const wf = stage('Workflow', (L) => {
       L.push(describe('topology', topoPick));
-      const g = buildWorkflow(pack, topoPick.id, ctx, stream(seed, 'wfshape'), L);
-      const rng = stream(seed, 'actors');
+      const g = buildWorkflow(pack, topoPick.id, ctx, rs('wfshape'), L);
+      const rng = rs('actors');
       const pAgent = clamp(ctx.autonomy * (interaction === 'supervisory' ? 1.15 : 0.85), 0, 0.95);
       let gated = 0;
       g.nodes.forEach((n) => {
@@ -419,7 +423,7 @@
       if (partPick.id === 'single') groups = [nodes];
       else if (partPick.id === 'perStep') groups = nodes.map((n) => [n]);
       else {
-        const rng = stream(seed, 'clusters');
+        const rng = rs('clusters');
         const k = Math.min(nodes.length, rng() < 0.5 ? 2 : 3);
         groups = []; const size = nodes.length / k; let acc = [];
         nodes.forEach((n, i) => { acc.push(n); if (acc.length >= size - rng() * 0.6 && groups.length < k - 1 && i < nodes.length - 1) { groups.push(acc); acc = []; } });
@@ -453,7 +457,7 @@
     const screens = stage('Widget selection', (L) => {
       const out = [];
       screenPlan.forEach((nodes, si) => {
-        const rng = stream(seed, 'select' + si);
+        const rng = rs('select' + si);
         const items = [];
         const covers = new Set();
         const used = {};
@@ -542,12 +546,12 @@
       const primary = choose('layout', scoreLayout(ctx, screens[0].items.length, screens[0].covers.has('triage'), interaction));
       L.push(describe('layout', primary));
       return screens.map((s, si) => {
-        const rng = stream(seed, 'layout' + si);
+        const rng = rs('layout' + si);
         let strat = primary.id;
         const opts = scoreLayout(ctx, s.items.length, s.covers.has('triage'), interaction);
-        if (!primary.locked && si > 0 && rng() < 0.3) strat = softmax(rng, opts, temp).id;
-        if (!opts.some((o) => o.id === strat) && !primary.locked) strat = opts[0].id;
-        if (primary.locked && ctx.device === 'handheld' && !opts.some((o) => o.id === strat)) strat = 'feed';
+        if (!primary.user && si > 0 && rng() < 0.3) strat = softmax(rng, opts, temp).id;
+        if (!opts.some((o) => o.id === strat) && !primary.user) strat = opts[0].id;
+        if (primary.user && ctx.device === 'handheld' && !opts.some((o) => o.id === strat)) strat = 'feed';
         let items = s.items.slice();
         if (items.length > device.budget) {
           const keep = device.budget - 1;
@@ -565,7 +569,7 @@
 
     const compPick = choose('composition', Object.keys(M.DIMENSIONS.composition.options).map((id) => ({ id, score: 1 + (id === 'bench' || id === 'theatre' ? (ctx.device === 'wall' ? 0.3 : 0) : 0) })));
     const page = stage('Page', (L) => {
-      const out = M.planPage(compPick.id, stream(seed, 'page'));
+      const out = M.planPage(compPick.id, rs('page'));
       L.push(describe('composition', compPick));
       L.push(`Controls appear as a ${out.dock.form} at ${out.dock.pos}. Page changes with a ${out.motion} transition.`);
       L.push(describe('skin', skinPick));
@@ -580,7 +584,7 @@
     }
 
     /* Shell: chrome placement is part of the plan too. */
-    const rngShell = stream(seed, 'shell');
+    const rngShell = rs('shell');
     shell.nav = navId;
     shell.header = ctx.device === 'handheld' || rngShell() < 0.35 ? 'compact' : 'full';
     shell.surface = interaction;
@@ -600,7 +604,7 @@
     const plan = {
       seed, goalId: pack.id, goal: input.goalText || pack.goal, ctx, locks: { ...locks },
       strategy: { interaction, nav: navId, topology: wf.shape, partition: partPick.id, layout: screenNodes.find((s) => !s.hub).strategy, skin: skinPick.id, composition: compPick.id },
-      identity: M.planIdentity(skinPick.id, stream(seed, 'identity')), page,
+      identity: M.planIdentity(skinPick.id, rs('identity')), page,
       pageTree: M.pageTree(page),
       workflow: { nodes: wf.nodes, edges: wf.edges },
       shell, tree, screens: screenNodes.map((s) => s.id), constraints, stages
